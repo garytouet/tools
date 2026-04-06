@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tea Cooling Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f5f4f0;
+    --text-primary: #1a1a18;
+    --text-secondary: #6b6a65;
+    --text-tertiary: #a09f9a;
+    --border: rgba(0,0,0,0.12);
+    --border-secondary: rgba(0,0,0,0.22);
+    --line: #534AB7;
+    --target-line: #0F6E56;
+    --grid: rgba(0,0,0,0.08);
+    --radius-lg: 12px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c;
+      --bg-secondary: #2a2a28;
+      --text-primary: #f0efe9;
+      --text-secondary: #a09f9a;
+      --text-tertiary: #6b6a65;
+      --border: rgba(255,255,255,0.12);
+      --border-secondary: rgba(255,255,255,0.22);
+      --line: #7F77DD;
+      --target-line: #5DCAA5;
+      --grid: rgba(255,255,255,0.08);
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+  }
+
+  .card { width: 100%; max-width: 520px; }
+  h1 { font-size: 22px; font-weight: 500; margin-bottom: 0.3rem; }
+  .subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 2rem; }
+
+  .section-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .tea-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.75rem; }
+
+  .tea-btn {
+    font-size: 13px;
+    padding: 5px 13px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border-secondary);
+    background: var(--bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .tea-btn:hover { background: var(--bg-secondary); }
+  .tea-btn.active { background: var(--bg-secondary); border-color: var(--text-secondary); }
+
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-secondary);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    border: none;
+    cursor: pointer;
+  }
+
+  .slider-val { font-size: 15px; font-weight: 500; min-width: 52px; text-align: right; }
+
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 1.25rem 0; }
+
+  .result-card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .result-big { font-size: 42px; font-weight: 500; line-height: 1; }
+  .result-sub { font-size: 14px; color: var(--text-secondary); margin-top: 6px; }
+
+  .chart-wrap { margin-top: 1.25rem; }
+  canvas { display: block; width: 100%; }
+
+  .legend { display: flex; gap: 16px; margin-top: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .legend-solid { width: 20px; height: 2px; background: var(--line); border-radius: 1px; }
+  .legend-dashed { width: 20px; height: 0; border-top: 2px dashed var(--target-line); }
+
+  .note { font-size: 12px; color: var(--text-tertiary); margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Tea cooling calculator</h1>
+  <p class="subtitle">How long to let boiling water rest before brewing</p>
+
+  <p class="section-label">Tea type</p>
+  <div class="tea-presets">
+    <button class="tea-btn" data-temp="100" onclick="selectTea(this)">Black tea · 100°C</button>
+    <button class="tea-btn" data-temp="95" onclick="selectTea(this)">White tea · 95°C</button>
+    <button class="tea-btn active" data-temp="85" onclick="selectTea(this)">Green tea · 85°C</button>
+    <button class="tea-btn" data-temp="80" onclick="selectTea(this)">Oolong · 80°C</button>
+    <button class="tea-btn" data-temp="75" onclick="selectTea(this)">Delicate green · 75°C</button>
+  </div>
+
+  <p class="section-label">Target water temperature</p>
+  <div class="slider-row">
+    <input type="range" id="target" min="45" max="100" value="85" step="1" oninput="update()">
+    <span class="slider-val"><span id="target-out">85</span>°C</span>
+  </div>
+
+  <p class="section-label">Room temperature</p>
+  <div class="slider-row">
+    <input type="range" id="room" min="15" max="30" value="19" step="1" oninput="update()">
+    <span class="slider-val"><span id="room-out">19</span>°C</span>
+  </div>
+
+  <hr>
+
+  <div class="result-card">
+    <div id="result-time" class="result-big">—</div>
+    <div id="result-sub" class="result-sub"></div>
+    <div class="chart-wrap">
+      <canvas id="cool-chart"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-solid"></div><span>Water temp</span></div>
+        <div class="legend-item"><div class="legend-dashed"></div><span>Target</span></div>
+      </div>
+    </div>
+    <p class="note" id="note-text"></p>
+  </div>
+</div>
+
+<script>
+  const TEA_TYPES = {100:"black tea", 95:"white tea", 85:"green tea", 80:"oolong", 75:"delicate green tea"};
+  const K = 0.035;
+  const T0 = 100;
+
+  function selectTea(btn) {
+    document.querySelectorAll('.tea-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('target').value = parseInt(btn.dataset.temp);
+    update();
+  }
+
+  function tempAt(t, Troom) {
+    return Troom + (T0 - Troom) * Math.exp(-K * t);
+  }
+
+  function minutesTo(Troom, Ttarget) {
+    if (Ttarget >= T0) return 0;
+    if (Ttarget <= Troom) return Infinity;
+    return Math.log((T0 - Troom) / (Ttarget - Troom)) / K;
+  }
+
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function drawChart(maxMins, target, room) {
+    const canvas = document.getElementById('cool-chart');
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.parentElement.clientWidth;
+    const H = 150;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, H);
+
+    const pad = { top: 10, right: 12, bottom: 30, left: 36 };
+    const pw = W - pad.left - pad.right;
+    const ph = H - pad.top - pad.bottom;
+    const end = Math.max(maxMins, 10);
+    const yMin = Math.max(room - 5, 20);
+    const yMax = 105;
+
+    const lineColor   = cssVar('--line');
+    const targetColor = cssVar('--target-line');
+    const gridColor   = cssVar('--grid');
+    const labelColor  = cssVar('--text-tertiary');
+
+    function cx(t) { return pad.left + (t / end) * pw; }
+    function cy(T) { return pad.top + ph - ((Math.min(Math.max(T, yMin), yMax) - yMin) / (yMax - yMin)) * ph; }
+
+    ctx.font = `11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+
+    // y gridlines + labels
+    [20, 40, 60, 80, 100].forEach(T => {
+      if (T < yMin || T > yMax) return;
+      const y = cy(T);
+      ctx.strokeStyle = gridColor;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
+      ctx.fillStyle = labelColor;
+      ctx.textAlign = 'right';
+      ctx.fillText(T + '°', pad.left - 5, y + 4);
+    });
+
+    // x gridlines + labels
+    const xStep = end <= 12 ? 2 : end <= 25 ? 5 : 10;
+    ctx.textAlign = 'center';
+    for (let t = 0; t <= end; t += xStep) {
+      const x = cx(t);
+      ctx.strokeStyle = gridColor;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + ph); ctx.stroke();
+      ctx.fillStyle = labelColor;
+      ctx.fillText(t + ' min', x, pad.top + ph + 18);
+    }
+
+    // cooling curve
+    ctx.beginPath();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    for (let i = 0; i <= 120; i++) {
+      const t = (i / 120) * end;
+      const x = cx(t), y = cy(tempAt(t, room));
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // target dashed line
+    if (target > yMin && target < yMax) {
+      ctx.beginPath();
+      ctx.strokeStyle = targetColor;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.moveTo(cx(0), cy(target));
+      ctx.lineTo(cx(end), cy(target));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // intersection dot
+    const tInt = minutesTo(room, target);
+    if (isFinite(tInt) && tInt > 0 && tInt <= end) {
+      ctx.beginPath();
+      ctx.arc(cx(tInt), cy(target), 4, 0, Math.PI * 2);
+      ctx.fillStyle = targetColor;
+      ctx.fill();
+    }
+  }
+
+  function update() {
+    const target = parseInt(document.getElementById('target').value);
+    const room   = parseInt(document.getElementById('room').value);
+    document.getElementById('target-out').textContent = target;
+    document.getElementById('room-out').textContent   = room;
+
+    if (target >= T0) {
+      document.getElementById('result-time').textContent = '0 min';
+      document.getElementById('result-sub').textContent  = 'Already at or above target — use immediately';
+      document.getElementById('note-text').textContent   = '';
+      drawChart(10, target, room); return;
+    }
+    if (target <= room) {
+      document.getElementById('result-time').textContent = '∞';
+      document.getElementById('result-sub').textContent  = 'Target is at or below room temp — not reachable by resting';
+      document.getElementById('note-text').textContent   = '';
+      drawChart(10, target, room); return;
+    }
+
+    const minutes = minutesTo(room, target);
+    const mins = Math.round(minutes);
+    document.getElementById('result-time').textContent = `~${mins} min`;
+    const teaName = TEA_TYPES[target] || `${target}°C tea`;
+    document.getElementById('result-sub').textContent  = `to cool from 100°C to ${target}°C (${teaName})`;
+    document.getElementById('note-text').textContent   = `Assumes an open cup in a ${room}°C room. Covered or insulated vessels cool slower.`;
+    drawChart(Math.ceil(minutes * 1.3 + 2), target, room);
+  }
+
+  window.addEventListener('resize', update);
+  update();
+</script>
+</body>
+</html>
